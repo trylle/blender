@@ -1,0 +1,7 @@
+{
+	"cmake.buildDirectory": "${workspaceFolder}/build",
+	"cmake.configureOnOpen": true,
+	"cmake.configureSettings": {
+		"WITH_BUILDINFO": "off"
+	}
+}
