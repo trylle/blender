@@ -5160,4 +5160,59 @@ void BLO_expand_id(BlendExpander *expander, ID *id)
   expand_doit(expander->fd, expander->main, id);
 }
 
+struct BlendDataReader *BLO_data_reader_new(struct FileData *fd)
+{
+  BlendDataReader *bdr = MEM_mallocN(sizeof(BlendDataReader),
+                                    "BLO_data_reader_new.BlendDataReader");
+
+  bdr->fd = fd;
+
+  return bdr;
+}
+
+struct BlendLibReader *BLO_lib_reader_new(struct FileData *fd, struct Main *main)
+{
+  BlendLibReader *blr = MEM_mallocN(sizeof(BlendLibReader), "BLO_lib_reader_new.BlendLibReader");
+
+  blr->fd = fd;
+  blr->main = main;
+
+  return blr;
+}
+
+struct BlendExpander *BLO_expander_new(struct FileData *fd, struct Main *main)
+{
+  BlendExpander *be = MEM_mallocN(sizeof(BlendExpander), "BLO_expander_new.BlendExpander");
+
+  be->fd = fd;
+  be->main = main;
+
+  return be;
+}
+
+void BLO_data_reader_free(struct BlendDataReader *bdr)
+{
+  MEM_freeN(bdr);
+}
+
+void BLO_lib_reader_free(struct BlendLibReader *blr)
+{
+  MEM_freeN(blr);
+}
+
+void BLO_expander_free(struct BlendExpander *be)
+{
+  MEM_freeN(be);
+}
+
+struct FileData *BLO_filedata_new(BlendFileReadReport *reports)
+{
+  return filedata_new(reports);
+}
+
+void BLO_filedata_free(struct FileData *fd)
+{
+  blo_filedata_free(fd);
+}
+
 /** \} */

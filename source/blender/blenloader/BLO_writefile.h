@@ -64,6 +64,16 @@ struct BlendFileWriteParams {
   const struct BlendThumbnail *thumb;
 };
 
+typedef struct BlendWriterCallbacks {
+  bool (*open)(void *userdata, const char *filepath);
+  bool (*close)(void *userdata);
+  size_t (*write)(void *userdata, const char *data, size_t data_len);
+} BlendWriterCallbacks;
+
+extern struct BlendWriter *BLO_writer_new(const struct BlendWriterCallbacks *callbacks,
+                                          void *userdata);
+extern void BLO_writer_free(struct BlendWriter *writer);
+
 /**
  * \return Success.
  */

@@ -144,6 +144,21 @@ typedef enum eBLOReadSkip {
 } eBLOReadSkip;
 #define BLO_READ_SKIP_ALL (BLO_READ_SKIP_USERDEF | BLO_READ_SKIP_DATA)
 
+struct BlendDataReader;
+struct BlendExpander;
+struct BlendLibReader;
+struct FileData;
+
+struct BlendDataReader *BLO_data_reader_new(struct FileData *fd);
+struct BlendLibReader *BLO_lib_reader_new(struct FileData *fd, struct Main *main);
+struct BlendExpander *BLO_expander_new(struct FileData *fd, struct Main *main);
+struct FileData *BLO_filedata_new(BlendFileReadReport *reports);
+
+void BLO_data_reader_free(struct BlendDataReader *bdr);
+void BLO_lib_reader_free(struct BlendLibReader *blr);
+void BLO_expander_free(struct BlendExpander *be);
+void BLO_filedata_free(struct FileData *fd);
+
 /**
  * Open a blender file from a pathname. The function returns NULL
  * and sets a report in the list if it cannot open the file.

@@ -159,6 +159,7 @@
 typedef enum {
   WW_WRAP_NONE = 1,
   WW_WRAP_ZSTD,
+  WW_WRAP_CALLBACK,
 } eWriteWrapType;
 
 typedef struct ZstdFrame {
@@ -174,6 +175,8 @@ struct WriteWrap {
   bool (*open)(WriteWrap *ww, const char *filepath);
   bool (*close)(WriteWrap *ww);
   size_t (*write)(WriteWrap *ww, const char *data, size_t data_len);
+
+  void *userdata;
 
   /* Buffer output (we only want when output isn't already buffered). */
   bool use_buf;
@@ -216,6 +219,31 @@ static bool ww_close_none(WriteWrap *ww)
 static size_t ww_write_none(WriteWrap *ww, const char *buf, size_t buf_len)
 {
   return write(ww->file_handle, buf, buf_len);
+}
+
+/* callback */
+typedef struct BlendWriterCallbackUserdata {
+  BlendWriterCallbacks callbacks;
+  void *userdata;
+} BlendWriterCallbackUserdata;
+
+static bool ww_open_callback(WriteWrap *ww, const char *filepath)
+{
+  BlendWriterCallbackUserdata *cbu = ww->userdata;
+
+  return cbu->callbacks.open(cbu->userdata, filepath);
+}
+static bool ww_close_callback(WriteWrap *ww)
+{
+  BlendWriterCallbackUserdata *cbu = ww->userdata;
+
+  return cbu->callbacks.close(cbu->userdata);
+}
+static size_t ww_write_callback(WriteWrap *ww, const char *buf, size_t buf_len)
+{
+  BlendWriterCallbackUserdata *cbu = ww->userdata;
+
+  return cbu->callbacks.write(cbu->userdata, buf, buf_len);
 }
 
 /* zstd */
@@ -387,6 +415,13 @@ static void ww_handle_init(eWriteWrapType ww_type, WriteWrap *r_ww)
       r_ww->open = ww_open_zstd;
       r_ww->close = ww_close_zstd;
       r_ww->write = ww_write_zstd;
+      r_ww->use_buf = true;
+      break;
+    }
+    case WW_WRAP_CALLBACK: {
+      r_ww->open = ww_open_callback;
+      r_ww->close = ww_close_callback;
+      r_ww->write = ww_write_callback;
       r_ww->use_buf = true;
       break;
     }
@@ -1600,6 +1635,45 @@ void BLO_write_string(BlendWriter *writer, const char *data_ptr)
 bool BLO_write_is_undo(BlendWriter *writer)
 {
   return writer->wd->use_memfile;
+}
+
+struct BlendWriter *BLO_writer_new(const struct BlendWriterCallbacks *callbacks, void *userdata)
+{
+  // see write_file_handle and BLO_write_file
+
+  BlendWriter *out_buf = MEM_mallocN(sizeof(BlendWriter), "BLO_writer_new.BlendWriter");
+  WriteWrap *ww = MEM_mallocN(sizeof(WriteWrap), "BLO_writer_new.WriteWrap");
+  BlendWriterCallbackUserdata *cbu = MEM_mallocN(sizeof(BlendWriterCallbackUserdata),
+                                                 "BLO_writer_new.BlendWriterCallbackUserdata");
+
+  memset(cbu, 0, sizeof(*cbu));
+
+  cbu->callbacks.open = callbacks->open;
+  cbu->callbacks.close = callbacks->close;
+  cbu->callbacks.write = callbacks->write;
+  cbu->userdata = userdata;
+
+  ww_handle_init(WW_WRAP_CALLBACK, ww);
+  ww->userdata = cbu;
+
+  MemFile *compare = NULL;
+  MemFile *current = NULL;
+  WriteData *wd = mywrite_begin(ww, compare, current);
+
+  out_buf->wd = wd;
+
+  return out_buf;
+}
+
+void BLO_writer_free(struct BlendWriter *writer)
+{
+  WriteWrap *ww = writer->wd->ww;
+  BlendWriterCallbackUserdata *cbu = ww->userdata;
+
+  mywrite_end(writer->wd);
+  MEM_freeN(ww);
+  MEM_freeN(cbu);
+  MEM_freeN(writer);
 }
 
 /** \} */
